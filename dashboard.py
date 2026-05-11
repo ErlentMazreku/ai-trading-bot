@@ -2,6 +2,8 @@ import streamlit as st
 import yfinance as yf
 import pandas as pd
 import numpy as np
+import requests
+from textblob import TextBlob
 import matplotlib.pyplot as plt
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.model_selection import train_test_split
@@ -136,5 +138,61 @@ axes[2].grid(True, alpha=0.3)
 plt.tight_layout()
 st.pyplot(fig)
 
+# Sentiment Analysis
+st.subheader("📰 Sentiment Analysis — Lajmet e Bitcoin")
+
+@st.cache_data(ttl=3600)
+def get_sentiment():
+    API_KEY = "8b25ac4d45194b8ebb7611ec7f7df229"
+    URL = f"https://newsapi.org/v2/everything?q=bitcoin&language=en&sortBy=publishedAt&pageSize=20&apiKey={API_KEY}"
+    try:
+        response = requests.get(URL, timeout=10)
+        articles = response.json().get("articles", [])
+    except:
+        articles = []
+    
+    results = []
+    for article in articles[:10]:
+        title = article.get("title", "")
+        date = article.get("publishedAt", "")[:10]
+        polarity = TextBlob(title).sentiment.polarity
+        if polarity > 0.1:
+            emoji = "🟢"
+            label = "Pozitiv"
+        elif polarity < -0.1:
+            emoji = "🔴"
+            label = "Negativ"
+        else:
+            emoji = "🟡"
+            label = "Neutral"
+        results.append({
+            "Sinjali": f"{emoji} {label}",
+            "Titulli": title[:80],
+            "Data": date,
+            "Score": round(polarity, 3)
+        })
+    return results
+
+# Shto imports në krye të dashboard.py
+# import requests
+# from textblob import TextBlob
+
+with st.spinner("Duke shkarkuar lajmet..."):
+    news = get_sentiment()
+
+if news:
+    df_news = pd.DataFrame(news)
+    avg_sent = df_news["Score"].mean()
+    
+    col_s1, col_s2 = st.columns(2)
+    if avg_sent > 0.1:
+        col_s1.success(f"🟢 BULLISH — Sentiment: {avg_sent:+.3f}")
+    elif avg_sent < -0.1:
+        col_s1.error(f"🔴 BEARISH — Sentiment: {avg_sent:+.3f}")
+    else:
+        col_s1.warning(f"🟡 NEUTRAL — Sentiment: {avg_sent:+.3f}")
+    
+    col_s2.metric("📰 Lajme të analizuara", len(news))
+    st.dataframe(df_news, use_container_width=True, hide_index=True)
 st.markdown("---")
 st.caption("⚠️ Ky bot është për qëllime edukative dhe portofoli. Jo këshillë financiare.")
