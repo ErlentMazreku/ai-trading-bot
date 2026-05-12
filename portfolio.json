@@ -1,0 +1,48 @@
+{
+  "cash": 2940.0,
+  "holdings": {
+    "BTC-USD": {
+      "shares": 0.04732347975555581,
+      "avg_price": 80298.40619558154
+    },
+    "ETH-USD": {
+      "shares": 1.4399727067394952,
+      "avg_price": 2263.931798666907
+    }
+  },
+  "trades": [
+    {
+      "type": "BUY",
+      "symbol": "BTC-USD",
+      "shares": 0.024905,
+      "price": 80306.37,
+      "total": 2000,
+      "date": "2026-05-12 18:08"
+    },
+    {
+      "type": "BUY",
+      "symbol": "ETH-USD",
+      "shares": 0.883377,
+      "price": 2264.04,
+      "total": 2000,
+      "date": "2026-05-12 18:08"
+    },
+    {
+      "type": "BUY",
+      "symbol": "BTC-USD",
+      "shares": 0.022419,
+      "price": 80289.56,
+      "total": 1800.0,
+      "date": "2026-05-12 18:09"
+    },
+    {
+      "type": "BUY",
+      "symbol": "ETH-USD",
+      "shares": 0.556596,
+      "price": 2263.76,
+      "total": 1260.0,
+      "date": "2026-05-12 18:09"
+    }
+  ],
+  "initial_capital": 10000.0
+}

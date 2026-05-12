@@ -3,6 +3,8 @@ import yfinance as yf
 import pandas as pd
 import numpy as np
 import requests
+import json
+import os
 from textblob import TextBlob
 import matplotlib.pyplot as plt
 from sklearn.ensemble import RandomForestClassifier
@@ -194,5 +196,70 @@ if news:
     
     col_s2.metric("📰 Lajme të analizuara", len(news))
     st.dataframe(df_news, use_container_width=True, hide_index=True)
+    # Paper Trading Section
+st.markdown("---")
+st.subheader("💰 Paper Trading — Portofoli Virtual")
+
+PORTFOLIO_FILE = "portfolio.json"
+
+def load_portfolio():
+    if os.path.exists(PORTFOLIO_FILE):
+        with open(PORTFOLIO_FILE, "r") as f:
+            return json.load(f)
+    return {"cash": 10000.0, "holdings": {}, "trades": [], "initial_capital": 10000.0}
+
+def get_current_prices(holdings):
+    prices = {}
+    for symbol in holdings:
+        try:
+            d = yf.download(symbol, period="1d", interval="1m", progress=False)
+            prices[symbol] = float(d["Close"].iloc[-1].values[0])
+        except:
+            prices[symbol] = holdings[symbol]["avg_price"]
+    return prices
+
+portfolio = load_portfolio()
+prices = get_current_prices(portfolio["holdings"])
+
+# Llogarit vlerat
+total_holdings = sum(
+    portfolio["holdings"][s]["shares"] * prices.get(s, portfolio["holdings"][s]["avg_price"])
+    for s in portfolio["holdings"]
+)
+total_value = portfolio["cash"] + total_holdings
+total_profit = total_value - portfolio["initial_capital"]
+pct = (total_profit / portfolio["initial_capital"]) * 100
+
+# Metrics
+col_p1, col_p2, col_p3, col_p4 = st.columns(4)
+col_p1.metric("💵 Cash", f"${portfolio['cash']:,.2f}")
+col_p2.metric("📦 Asetet", f"${total_holdings:,.2f}")
+col_p3.metric("💼 Totali", f"${total_value:,.2f}")
+col_p4.metric("📈 Fitim/Humbje", f"${total_profit:+.2f}", f"{pct:+.1f}%")
+
+# Holdings tabela
+if portfolio["holdings"]:
+    st.markdown("**📦 Pozicionet aktuale:**")
+    rows = []
+    for symbol, data in portfolio["holdings"].items():
+        current = prices.get(symbol, data["avg_price"])
+        value = data["shares"] * current
+        profit = (current - data["avg_price"]) * data["shares"]
+        pct_h = ((current - data["avg_price"]) / data["avg_price"]) * 100
+        rows.append({
+            "Asset": symbol,
+            "Shares": round(data["shares"], 6),
+            "Çmimi mesatar": f"${data['avg_price']:,.2f}",
+            "Çmimi aktual": f"${current:,.2f}",
+            "Vlera": f"${value:,.2f}",
+            "P&L": f"${profit:+.2f} ({pct_h:+.1f}%)"
+        })
+    st.dataframe(pd.DataFrame(rows), use_container_width=True, hide_index=True)
+
+# Historiku i tregtimeve
+if portfolio["trades"]:
+    st.markdown("**📋 Historiku i tregtimeve:**")
+    trades_df = pd.DataFrame(portfolio["trades"][-10:])
+    st.dataframe(trades_df, use_container_width=True, hide_index=True)
 st.markdown("---")
 st.caption("⚠️ Ky bot është për qëllime edukative dhe portofoli. Jo këshillë financiare.")
