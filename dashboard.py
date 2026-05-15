@@ -1,4 +1,10 @@
 import streamlit as st
+st.title("🤖 AI Trading Bot Dashboard")
+st.markdown("**Strategji bazuar në SMA + RSI + ML Model**")
+
+# Shfaq kohën e refresh-it të fundit
+from datetime import datetime
+st.caption(f"🔄 Të dhënat u rifreskuan: {datetime.now().strftime('%H:%M:%S')} — Rifreskim automatik çdo 5 min")
 # Multi-Asset Section
 st.markdown("---")
 st.subheader("🌐 Multi-Asset Comparison")
@@ -86,6 +92,11 @@ from sklearn.metrics import accuracy_score
 from sklearn.preprocessing import StandardScaler
 
 st.set_page_config(page_title="AI Trading Bot", page_icon="🤖", layout="wide")
+import time
+from streamlit_autorefresh import st_autorefresh
+
+# Auto-refresh çdo 5 minuta (300,000 ms)
+st_autorefresh(interval=300000, key="autorefresh")
 st.title("🤖 AI Trading Bot Dashboard")
 st.markdown("**Strategji bazuar në SMA + RSI + ML Model**")
 

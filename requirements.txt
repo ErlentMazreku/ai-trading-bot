@@ -6,3 +6,4 @@ scikit-learn
 streamlit
 requests
 textblob
+streamlit-autorefresh
