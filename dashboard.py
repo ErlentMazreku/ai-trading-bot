@@ -262,4 +262,91 @@ if portfolio["trades"]:
     trades_df = pd.DataFrame(portfolio["trades"][-10:])
     st.dataframe(trades_df, use_container_width=True, hide_index=True)
 st.markdown("---")
+# Advanced Stats Section
+st.markdown("---")
+st.subheader("📊 Statistikat e Avancuara")
+
+@st.cache_data(ttl=3600)
+def get_advanced_stats(symbol, period):
+    data = load_data(symbol, period)
+    data["Strategy_Returns"] = data["Signal"].shift(1) * data["Returns"]
+    data = data.dropna()
+
+    risk_free = 0.05 / 252
+    excess = data["Strategy_Returns"] - risk_free
+    sharpe = np.sqrt(252) * excess.mean() / excess.std()
+
+    cumulative = (1 + data["Strategy_Returns"]).cumprod()
+    rolling_max = cumulative.expanding().max()
+    drawdown = (cumulative - rolling_max) / rolling_max
+    max_dd = drawdown.min()
+
+    win_rate = (data["Strategy_Returns"] > 0).sum() / (data["Strategy_Returns"] != 0).sum()
+    total_ret = cumulative.iloc[-1] - 1
+    market_ret = (1 + data["Returns"]).cumprod().iloc[-1] - 1
+    volatility = data["Strategy_Returns"].std() * np.sqrt(252)
+    calmar = total_ret / abs(max_dd) if max_dd != 0 else 0
+
+    return {
+        "sharpe": sharpe,
+        "max_drawdown": max_dd,
+        "win_rate": win_rate,
+        "total_return": total_ret,
+        "market_return": market_ret,
+        "volatility": volatility,
+        "calmar": calmar
+    }
+
+stats = get_advanced_stats(symbol, period)
+
+# Metrics row
+col_s1, col_s2, col_s3, col_s4 = st.columns(4)
+
+sharpe_color = "normal" if stats["sharpe"] > 1 else "inverse"
+col_s1.metric(
+    "⚡ Sharpe Ratio",
+    f"{stats['sharpe']:.2f}",
+    ">1.0 = i mirë"
+)
+col_s2.metric(
+    "📉 Max Drawdown",
+    f"{stats['max_drawdown']*100:.1f}%",
+    "sa keq shkoi"
+)
+col_s3.metric(
+    "🎯 Win Rate",
+    f"{stats['win_rate']*100:.1f}%",
+    ">55% = i mirë"
+)
+col_s4.metric(
+    "🏆 Calmar Ratio",
+    f"{stats['calmar']:.2f}",
+    ">1.0 = excellent"
+)
+
+# Kthimet
+col_r1, col_r2, col_r3 = st.columns(3)
+col_r1.metric("🤖 AI Bot Return", f"{stats['total_return']*100:+.1f}%")
+col_r2.metric("📊 Buy & Hold", f"{stats['market_return']*100:+.1f}%")
+advantage = (stats['total_return'] - stats['market_return']) * 100
+col_r3.metric("💡 Avantazhi", f"{advantage:+.1f}%", 
+              "Bot fitoi!" if advantage > 0 else "Market fitoi!")
+
+# Drawdown chart
+st.markdown("**📉 Drawdown Chart:**")
+temp_data = load_data(symbol, period)
+temp_data["Strat_R"] = temp_data["Signal"].shift(1) * temp_data["Returns"]
+temp_data = temp_data.dropna()
+cum = (1 + temp_data["Strat_R"]).cumprod()
+roll_max = cum.expanding().max()
+dd_chart = ((cum - roll_max) / roll_max) * 100
+
+fig_dd, ax_dd = plt.subplots(figsize=(12, 3))
+ax_dd.fill_between(dd_chart.index, dd_chart, 0, color="red", alpha=0.4)
+ax_dd.plot(dd_chart, color="red", linewidth=1)
+ax_dd.set_title(f"Drawdown % — {symbol}")
+ax_dd.grid(True, alpha=0.3)
+plt.tight_layout()
+st.pyplot(fig_dd)
 st.caption("⚠️ Ky bot është për qëllime edukative dhe portofoli. Jo këshillë financiare.")
+
