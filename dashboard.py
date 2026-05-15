@@ -1,4 +1,77 @@
 import streamlit as st
+# Multi-Asset Section
+st.markdown("---")
+st.subheader("🌐 Multi-Asset Comparison")
+
+ASSETS = {
+    "BTC-USD": "Bitcoin",
+    "ETH-USD": "Ethereum",
+    "AAPL": "Apple",
+    "TSLA": "Tesla",
+    "NVDA": "NVIDIA",
+    "GLD": "Gold ETF"
+}
+
+@st.cache_data(ttl=3600)
+def get_multi_asset_stats():
+    results = []
+    for sym, name in ASSETS.items():
+        try:
+            d = yf.download(sym, period="1y", interval="1d", progress=False)
+            d = pd.DataFrame(d["Close"][sym])
+            d.columns = ["Close"]
+            d["SMA_20"] = d["Close"].rolling(20).mean()
+            d["SMA_50"] = d["Close"].rolling(50).mean()
+            delta = d["Close"].diff()
+            gain = delta.clip(lower=0).rolling(14).mean()
+            loss = -delta.clip(upper=0).rolling(14).mean()
+            d["RSI"] = 100 - (100 / (1 + gain / loss))
+            d = d.dropna()
+            d["Signal"] = 0
+            d.loc[(d["SMA_20"] > d["SMA_50"]) & (d["RSI"] < 70), "Signal"] = 1
+            d.loc[(d["SMA_20"] < d["SMA_50"]) | (d["RSI"] > 70), "Signal"] = -1
+            d["Returns"] = d["Close"].pct_change()
+            d["Strat"] = d["Signal"].shift(1) * d["Returns"]
+            d = d.dropna()
+            bot_ret = (1 + d["Strat"]).cumprod().iloc[-1] - 1
+            mkt_ret = (1 + d["Returns"]).cumprod().iloc[-1] - 1
+            sharpe = np.sqrt(252) * d["Strat"].mean() / d["Strat"].std()
+            win_rate = (d["Strat"] > 0).sum() / (d["Strat"] != 0).sum()
+            rsi_now = d["RSI"].iloc[-1]
+            price = d["Close"].iloc[-1]
+            sig = d["Signal"].iloc[-1]
+            signal = "🟢 BUY" if sig == 1 else "🔴 SELL" if sig == -1 else "🟡 HOLD"
+            results.append({
+                "Asset": sym,
+                "Emri": name,
+                "Çmimi": f"${price:,.2f}",
+                "RSI": round(rsi_now, 1),
+                "Sinjali": signal,
+                "Bot %": f"{bot_ret*100:+.1f}%",
+                "Market %": f"{mkt_ret*100:+.1f}%",
+                "Sharpe": round(sharpe, 2),
+                "Win Rate": f"{win_rate*100:.1f}%"
+            })
+        except:
+            pass
+    return results
+
+with st.spinner("Duke analizuar të gjitha asetet..."):
+    multi_results = get_multi_asset_stats()
+
+if multi_results:
+    df_multi = pd.DataFrame(multi_results)
+    st.dataframe(df_multi, use_container_width=True, hide_index=True)
+    
+    # Ranking
+    st.markdown("**🏆 Ranking sipas Bot Return:**")
+    sorted_r = sorted(multi_results, 
+                     key=lambda x: float(x["Bot %"].replace("%","").replace("+","")), 
+                     reverse=True)
+    for i, r in enumerate(sorted_r, 1):
+        emoji = "🥇" if i==1 else "🥈" if i==2 else "🥉" if i==3 else f"#{i}"
+        st.markdown(f"{emoji} **{r['Emri']}** — Bot: {r['Bot %']} | Market: {r['Market %']} | Sinjali: {r['Sinjali']}")
+import streamlit as st
 import yfinance as yf
 import pandas as pd
 import numpy as np
